@@ -15,9 +15,11 @@ attribute vec3 aRandomness;
 attribute float aScale;
 
 varying vec3 vColor;
+varying vec2 vUv;
 
 void main()
 {
+    vUv = uv;
     /**
      * Position
      */

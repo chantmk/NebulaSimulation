@@ -37,11 +37,19 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 /**
+ *  Texture
+ */
+
+const loadingManager = new THREE.LoadingManager()
+const textureLoader = new THREE.TextureLoader(loadingManager)
+const cloudTexture = textureLoader.load('/clouds.png')
+/**
  * Particles
  */
 
 const parameters = {
-    count: 10000,
+    // count: 10000,
+    count: 1000,
     size: 60.0,
     radius: 5,
     branches: 3,
@@ -109,7 +117,8 @@ const generateGalaxy = () => {
     //     size: parameters.size,
     //     sizeAttenuation: true,
     //     depthWrite: false,
-    //     blending: THREE.AdditiveBlending
+    //     blending: THREE.AdditiveBlending,
+    //     map: cloudTexture
     // })
     material = new THREE.ShaderMaterial({
         depthWrite: false,
@@ -119,7 +128,8 @@ const generateGalaxy = () => {
         fragmentShader: galaxyFragmenntShader,
         uniforms: {
             uSize: {value: parameters.size * renderer.getPixelRatio()},
-            uTime: {value: 0}
+            uTime: {value: 0},
+            uTexture: {type: "t", value: cloudTexture}
         }
     })
 
@@ -136,8 +146,9 @@ generateGalaxy()
 /**
  * Debug
  */
-gui.add(parameters, 'count').min(100).max(1000000).step(100).onFinishChange(generateGalaxy)
-gui.add(parameters, 'size').min(2).max(2000).step(1).onFinishChange(generateGalaxy)
+gui.add(parameters, 'count').min(1).max(100000).step(1).onFinishChange(generateGalaxy)
+// gui.add(parameters, 'count').min(1).max(1).step(0).onFinishChange(generateGalaxy)
+gui.add(parameters, 'size').min(0.01).max(500).step(0.01).onFinishChange(generateGalaxy)
 gui.add(parameters, 'radius').min(0.01).max(20).step(0.01).onFinishChange(generateGalaxy)
 gui.add(parameters, 'branches').min(2).max(10).step(1).onFinishChange(generateGalaxy)
 // gui.add(parameters, 'spin').min(-5).max(5).step(0.1).onFinishChange(generateGalaxy)
