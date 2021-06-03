@@ -4,6 +4,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'dat.gui'
 import galaxyVertexShader from './Shaders/galaxyVertex.glsl'
 import galaxyFragmenntShader from './Shaders/galaxyFragment.glsl'
+import cheapCloud from './Shaders/cloudFragment.glsl'
+import textureFragment from './Shaders/textureFragment.glsl'
 
 /**
  * Canvase
@@ -126,10 +128,13 @@ const generateGalaxy = () => {
         vertexColors: true,
         vertexShader: galaxyVertexShader,
         fragmentShader: galaxyFragmenntShader,
+        // fragmentShader: cheapCloud,
+        // fragmentShader: textureFragment,
         uniforms: {
             uSize: {value: parameters.size * renderer.getPixelRatio()},
             uTime: {value: 0},
-            uTexture: {type: "t", value: cloudTexture}
+            uTexture: {type: "t", value: cloudTexture},
+            uResolution: {value: new THREE.Vector3(sizes.width, sizes.height, 1)}
         }
     })
 

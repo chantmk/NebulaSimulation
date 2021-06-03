@@ -1,4 +1,5 @@
 uniform sampler2D uTexture;
+uniform float uTime;
 
 varying vec3 vColor;
 varying vec2 vUv;
@@ -23,6 +24,4 @@ void main()
     // Final color
     vec3 color = mix(vec3(0.0), vColor, strength);
     gl_FragColor = vec4(color, 1.0);
-
-    // gl_FragColor = texture2D(uTexture, gl_PointCoord);
 }
