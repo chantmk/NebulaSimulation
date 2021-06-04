@@ -62,7 +62,7 @@ const parameters = {
 }
 
 const starParameters = {
-    count: 10000,
+    count: 8000,
     size: 60.0,
     radius: 5,
     branches: 3,
@@ -74,13 +74,13 @@ const starParameters = {
 }
 
 const textureParameters = {
-    count: 1000,
-    size: 500.0,
-    radius: 5,
+    count: 550,
+    size: 720.0,
+    radius: 6.67,
     branches: 3,
     randomRange: 0.6,
-    randomnessPower: 2.7,
-    scaleRange: 2,
+    randomnessPower: 1.3,
+    scaleRange: 2.4,
     insideColor: '#ff6030',
     outsideColor: '#1b3984'
 }
@@ -311,7 +311,7 @@ starFolder.addColor(starParameters, 'insideColor').onFinishChange(generateStars)
 starFolder.addColor(starParameters, 'outsideColor').onFinishChange(generateStars)
 
 const textureFolder = gui.addFolder("textureFolder")
-textureFolder.add(textureParameters, 'count').min(1).max(100).step(1).onFinishChange(generateTexture)
+textureFolder.add(textureParameters, 'count').min(1).max(1000).step(1).onFinishChange(generateTexture)
 textureFolder.add(textureParameters, 'size').min(100).max(1000).step(1).onFinishChange(generateTexture)
 textureFolder.add(textureParameters, 'radius').min(0.01).max(20).step(0.01).onFinishChange(generateTexture)
 textureFolder.add(textureParameters, 'branches').min(2).max(10).step(1).onFinishChange(generateTexture)
