@@ -8,6 +8,15 @@ import cheapCloud from './Shaders/cloudFragment.glsl'
 import textureFragment from './Shaders/textureFragment.glsl'
 import textureVertex from './Shaders/textureVertex.glsl'
 
+class Particle {
+    constructor(mass, position) {
+        this.mass = mass
+        this.position = position
+        this.velocity = THREE.Vector3()
+        this.force = THREE.Vector3()
+        this.invMass = 1/mass
+    }
+}
 /**
  * Canvas
  */
@@ -288,7 +297,11 @@ const generateTexture = () => {
  
  const controls = new OrbitControls(camera, canvas)
  controls.enableDamping = true
- 
+
+const flash = new THREE.PointLight(0x062d89, 30, 500 ,1.7);
+flash.position.set(0,0,0);
+scene.add(flash);
+
  /**
  * Debug
  */
