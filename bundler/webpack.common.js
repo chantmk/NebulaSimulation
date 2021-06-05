@@ -82,6 +82,15 @@ module.exports = {
                         }
                     }
                 ]
+            },
+            // Shaders
+            {
+                test: /\.(glsl|vs|fs|frag|vert)$/,
+                exclude: /node_modules/,
+                use:
+                [
+                    'raw-loader'
+                ]
             }
         ]
     }
