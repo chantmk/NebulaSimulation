@@ -1,162 +1,61 @@
-#define PI 3.14159265f
+precision highp float;
+precision highp sampler3D;
 
-uniform sampler2D uTexture;
-uniform vec3 uResolution;
-uniform float uTime;
+varying vec3 vOrigin;
+varying vec3 vDirection;
 
-varying vec3 vColor;
-varying vec2 vUv;
+uniform vec3 uColor;
+uniform sampler3D uVolume;
+uniform float uThreshold;
+uniform float uRange;
+uniform float uOpacity;
+uniform float uSteps;
 
-vec3 hash(vec3 p) {
-    float n = sin(dot(p, vec3(7, 157, 113)));
-    return fract(vec3(2097152, 262144, 32768)*n);
+vec2 computeHitBox(vec3 origin, vec3 dir) {
+    vec3 inv_dir = 1.0/dir;
+    vec3 boxMin = (vec3(-0.5) - origin) * inv_dir;
+    vec3 boxMax = (vec3(0.5) - origin) * inv_dir;
+    vec3 tMin = min(boxMin, boxMax);
+    vec3 tMax = max(boxMin, boxMax);
+    float near = max(tMin.x, max(tMin.y, tMin.z));
+    float far = min(tMax.x, min(tMax.y, tMax.z));
+    return vec2(near, far);
 }
 
-float trigNoise3D(vec3 p) {
-    float res = 0.;
-    float sum = 0.;
-    vec3 t = sin(p.yzx*PI + cos(p.zxy*PI*5.0/4.0))*0.5+0.5;
-    p = p*1.5 + (t-1.5);
-    res += (dot(t, vec3(0.333)));
-    return res;
+float sample1( vec3 p ) {
+    return texture( uVolume, p ).r;
+}
+float shading( vec3 coord ) {
+    float step = 0.01;
+    return sample1( coord + vec3( - step ) ) - sample1( coord + vec3( step ) );
 }
 
-float map(vec3 p) {
-    return trigNoise3D(p*0.5);
-}
+void main() {
+    vec3 rayDir = normalize(vDirection);
+    vec2 bound = computeHitBox(vOrigin, rayDir);
+    if (bound.x > bound.y) discard;
+    // if x is negative our camera is in between
+    bound.x = max(bound.x, 0.0);
 
-void cheapCloudShader( out vec4 fragColor, in vec2 fragCoord )
-{  
-
-    // Unit direction ray vector: Note the absence of a divide term. I came across
-    // this via a comment Shadertoy user "coyote" made. I'm pretty easy to please,
-    // but I thought it was pretty cool.
-    vec3 rd = normalize(vec3(fragCoord - uResolution.xy*.5, uResolution.y*.75)); 
-
-    // Ray origin. Moving along the Z-axis.
-    vec3 ro = vec3(0, 0, uTime*4.);
-
-    // Cheap camera rotation.
-    //
-    // 2D rotation matrix. Note the absence of a cos variable. It's there, but in disguise.
-    // This one came courtesy of Shadertoy user, "Fabrice Neyret."
-    vec2 a = sin(vec2(1.5707963, 0) + uTime*0.1875); 
-    mat2 rM = mat2(a, -a.y, a.x);
-    rd.xy = rd.xy*rM; // Apparently, "rd.xy *= rM" doesn't work on some setups. Crazy.
-    rd.xz = rd.xz*rM;
-
-    // Placing a light in front of the viewer and up a little, then rotating it in sync
-    // with the camera. I guess a light beam from a flying vehicle would do this.
-    vec3 lp = vec3( 0, 1, 4);
-    lp.xy = lp.xy*rM;
-    lp.xz = lp.xz*rM;
-    lp += ro;
-
-    // The ray is effectively marching through discontinuous slices of noise, so at certain
-    // angles, you can see the separation. A bit of randomization can mask that, to a degree.
-    // At the end of the day, it's not a perfect process. Note, the ray is deliberately left 
-    // unnormalized... if that's a word.
-    //
-    // Randomizing the direction.
-    //rd = (rd + ((rd.zyx)*.006 - .003)); 
-    // Randomizing the length also. 
-    rd *= (1. + fract((dot(vec3(7, 157, 113), rd.zyx))*43758.5453)*0.06-0.03);      
-
-    // Local density, total density, and weighting factor.
-    float lDe = 0., td = 0., w = 0.;
-
-    // Closest surface distance, and total ray distance travelled.
-    float d = 1., t = 0.;
-
-    // Distance threshold. Higher numbers give thicker clouds, but fill up the screen too much.    
-    const float h = .5;
-
-
-    // Initializing the scene color to black, and declaring the surface position vector.
-    vec3 col = vec3(0), sp;
-
-
-
-    // Particle surface normal.
-    //
-    // Here's my hacky reasoning. I'd imagine you're going to hit the particle front on, so the normal
-    // would just be the opposite of the unit direction ray. However particles are particles, so there'd
-    // be some randomness attached... Yeah, I'm not buying it either. :)
-    vec3 sn = normalize(-rd);
-
-    // Raymarching loop.
-    for (int i=0; i<64; i++) {
-
-        // Loop break conditions. Seems to work, but let me
-        // know if I've overlooked something.
-        if((td>1.) || d<.01*t || t>80.)break;
-
-
-        sp = ro + rd*t; // Current ray position.
-        d = map(sp); // Closest distance to the surface... particle.
-
-        // If we get within a certain distance, "h," of the surface, accumulate some surface values.
-        // The "step" function is a branchless way to do an if statement, in case you're wondering.
-        //
-        // Values further away have less influence on the total. When you accumulate layers, you'll
-        // usually need some kind of weighting algorithm based on some identifying factor - in this
-        // case, it's distance. This is one of many ways to do it. In fact, you'll see variations on 
-        // the following lines all over the place.
-        //
-        lDe = (h - d)*step(d, h); 
-        w = (1. - td)*lDe;   
-
-        // Use the weighting factor to accumulate density. How you do this is up to you. 
-        td += w*w*8. + 1./64.; //w*w*5. + 1./50.;
-        //td += w*.4 + 1./45.; // Looks cleaner, but a little washed out.
-
-
-        // Point light calculations.
-        vec3 ld = lp-sp; // Direction vector from the surface to the light position.
-        float lDist = max(length(ld), .001); // Distance from the surface to the light.
-        ld/=lDist; // Normalizing the directional light vector.
-
-        // Using the light distance to perform some falloff.
-        float atten = 1./(1. + lDist*.125 + lDist*lDist*.05);
-
-        // Ok, these don't entirely correlate with tracing through transparent particles,
-        // but they add a little anglular based highlighting in order to fake proper lighting...
-        // if that makes any sense. I wouldn't be surprised if the specular term isn't needed,
-        // or could be taken outside the loop.
-        float diff = max(dot( sn, ld ), 0.);
-        float spec = pow(max( dot( reflect(-ld, sn), -rd ), 0. ), 4.);
-
-
-        // Accumulating the color. Note that I'm only adding a scalar value, in this case,
-        // but you can add color combinations. Note the "d*3. - .1" term. It's there as a bit
-        // of a fudge to make the clouds a bit more shadowy.
-        col += w*(d*3. - .1)*(.5 + diff + spec*.5)*atten;
-
-        // Try this instead, to see what it looks like without the fake contrasting. Obviously,
-        // much faster.
-        //col += w*atten*1.25;
-
-
-        // Enforce minimum stepsize. This is probably the most important part of the procedure.
-        // It reminds me a little of of the soft shadows routine.
-        t +=  max(d*.5, .02); //
-        // t += .2; // t += d*.5;// These also work, but don't seem as efficient.
-
-    }
-
-    col = max(col, 0.);
-
-    // trigNoise3D(rd*1.)
-    col = mix(pow(vec3(1.5, 1, 1)*col,  vec3(1, 2, 8)), col, dot(cos(rd*6. +sin(rd.yzx*6.)), vec3(.333))*.35 + .65);
-    col = mix(col.zyx, col, dot(cos(rd*9. +sin(rd.yzx*9.)), vec3(.333))*.15 + .85);//xzy
+    // Position that intersect
+    vec3 p = vOrigin + bound.x*rayDir;
+    vec3 inc = 1.0 / abs(rayDir);
     
+    float delta = min(inc.x, min(inc.y, inc.z));
+    delta /= uSteps;
+    vec3 size = vec3(textureSize(uVolume, 0));
+    p += rayDir * (1.0/size);
 
-    //col = mix(col.zyx, col, dot(rd, vec3(.5))+.5);
-
-    fragColor = vec4(sqrt(max(col, 0.)), 1.0);
-}
-
-void main()
-{
-    cheapCloudShader(gl_FragColor, gl_PointCoord.xy);
+    vec4 color = vec4(uColor, 0.0);
+    for (float t = bound.x; t<bound.y; t += delta) {
+        float d = sample1(p);
+        d = smoothstep(uThreshold - uRange, uThreshold + uRange, d) * uOpacity;
+        float col = shading(p) + ((p.x + p.y));
+        color.rgb += (1.0 - color.a) * d * col;
+        color.a += (1.0 - color.a) * d;
+        if (color.a >= 0.95) break;
+        p += rayDir*delta;
+    }
+    if (color.a == 0.0) discard;
+    gl_FragColor = color;
 }
