@@ -1,12 +1,18 @@
 uniform vec3 uCameraPosition;
+uniform float uTime;
+uniform float uRandomness;
 
 varying vec3 vOrigin;
 varying vec3 vDirection;
+varying vec3 vPosition;
 
 void main() {
     // vOrigin = vec3(inverse(modelMatrix) * vec4(uCameraPosition, 1.0)).xyz;
+    vPosition = position;
     vOrigin = uCameraPosition;
     vDirection = position - vOrigin;
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mvPosition;
+    vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+    
+    vec4 viewPosition = viewMatrix * modelPosition;
+    gl_Position = projectionMatrix * viewPosition;
 }
