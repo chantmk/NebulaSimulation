@@ -68,10 +68,10 @@ scene.background = cubeTexture
  */
 
 const parameters = {
-    enableStar: false,
-    enableCloudShader: false,
-    enableTexture: false,
     enableCloud: true,
+    enableCloudNoise: false,
+    enableCloudTexture: false,
+    enableStar: false,
 }
 
 const starParameters = {
@@ -87,13 +87,13 @@ const starParameters = {
 }
 
 const cloudShaderParameters = {
-    count: 100,
-    size: 60.0,
+    count: 200,
+    size: 580,
     radius: 5,
     branches: 3,
     randomRange: 0.6,
-    randomnessPower: 2.7,
-    scaleRange: 2,
+    randomnessPower: 3.5,
+    scaleRange: 2.1,
     insideColor: '#ff6030',
     outsideColor: '#1b3984'
 }
@@ -111,17 +111,14 @@ const textureParameters = {
 }
 
 const cloudParameters = {
-    perlinWidth: 128,
-    perlinHeight: 128,
-    perlinDepth: 128,
+    perlinSize: 128,
     perlinScale: 0.05,
-    threshold: 0.25,
-    opacity: 0.25,
-    range: 0.1,
+    threshold: 0.3,
+    opacity: 0.5,
+    range: 0.15,
     steps: 100,
     size: 0.05,
-    randomness: 0.2,
-    base: '#e1566b'
+    base: '#27277f'
 }
 /**
  * General
@@ -142,11 +139,11 @@ const generateGalaxy = () => {
     }
 
     clearGalaxy(cloudShader)
-    if (parameters.enableCloudShader) {
+    if (parameters.enableCloudNoise) {
         generateCloudShader()
     }
     clearGalaxy(textureCloud)
-    if (parameters.enableTexture) {
+    if (parameters.enableCloudTexture) {
         generateTexture()
     }
 
@@ -414,20 +411,20 @@ let cloud = null
 const generateCloud = () => {
 
     // Texture
-    const data = new Uint8Array( cloudParameters.perlinWidth * cloudParameters.perlinHeight * cloudParameters.perlinDepth );
+    const data = new Uint8Array( cloudParameters.perlinSize * cloudParameters.perlinSize * cloudParameters.perlinSize );
 
     // Use perline noise to generate texture that will be use to map later
     let i = 0;
-    for ( let z = 0; z < cloudParameters.perlinDepth; z ++ ) {
+    for ( let z = 0; z < cloudParameters.perlinSize; z ++ ) {
 
-        for ( let y = 0; y < cloudParameters.perlinHeight; y ++ ) {
+        for ( let y = 0; y < cloudParameters.perlinSize; y ++ ) {
 
-            for ( let x = 0; x < cloudParameters.perlinDepth; x ++ ) {
+            for ( let x = 0; x < cloudParameters.perlinSize; x ++ ) {
 
                 const d = 1.0 - vector.set( 
-                    (x-(cloudParameters.perlinWidth/2))/cloudParameters.perlinWidth, 
-                    (y-(cloudParameters.perlinHeight/2))/cloudParameters.perlinHeight, 
-                    (z-(cloudParameters.perlinDepth/2))/cloudParameters.perlinDepth).length();
+                    (x-(cloudParameters.perlinSize/2))/cloudParameters.perlinSize, 
+                    (y-(cloudParameters.perlinSize/2))/cloudParameters.perlinSize, 
+                    (z-(cloudParameters.perlinSize/2))/cloudParameters.perlinSize).length();
                 data[ i ] = ( 128 + 128 * perlin.noise( x * cloudParameters.perlinScale*1.5, y * cloudParameters.perlinScale, z * cloudParameters.perlinScale) ) * d * d;
                 i ++;
             }
@@ -436,7 +433,7 @@ const generateCloud = () => {
 
     }
 
-    cloudVolume = new THREE.DataTexture3D( data, cloudParameters.perlinWidth, cloudParameters.perlinHeight, cloudParameters.perlinDepth );
+    cloudVolume = new THREE.DataTexture3D( data, cloudParameters.perlinSize, cloudParameters.perlinSize, cloudParameters.perlinSize );
     cloudVolume.format = THREE.RedFormat;
     cloudVolume.minFilter = THREE.LinearFilter;
     cloudVolume.magFilter = THREE.LinearFilter;
@@ -457,7 +454,6 @@ const generateCloud = () => {
             uRange: { value: cloudParameters.range },
             uSteps: { value: cloudParameters.steps },
             uTestSize: {value: cloudParameters.size},
-            uRandomness: {value: cloudParameters.randomness}
         },
         side: THREE.BackSide,
         transparent: true,
@@ -490,10 +486,42 @@ const generateCloud = () => {
 const gui = new dat.GUI()
 
 const generalFolder = gui.addFolder("General")
-generalFolder.add(parameters, 'enableStar').onChange(generateGalaxy)
-generalFolder.add(parameters, 'enableCloudShader').onChange(generateGalaxy)
-generalFolder.add(parameters, 'enableTexture').onChange(generateGalaxy)
 generalFolder.add(parameters, 'enableCloud').onChange(generateGalaxy)
+generalFolder.add(parameters, 'enableCloudNoise').onChange(generateGalaxy)
+generalFolder.add(parameters, 'enableCloudTexture').onChange(generateGalaxy)
+generalFolder.add(parameters, 'enableStar').onChange(generateGalaxy)
+
+const cloudFolder = gui.addFolder("Cloud")
+cloudFolder.add( cloudParameters, 'threshold', 0, 1, 0.01 ).onFinishChange( generateGalaxy );
+cloudFolder.add( cloudParameters, 'opacity', 0, 1, 0.01 ).onFinishChange( generateGalaxy );
+cloudFolder.add( cloudParameters, 'range', 0, 1, 0.01 ).onFinishChange( generateGalaxy );
+cloudFolder.add( cloudParameters, 'steps', 0, 200, 1 ).onFinishChange( generateGalaxy );
+cloudFolder.add( cloudParameters, 'size', 0, 10, 0.01).onFinishChange( generateGalaxy );
+cloudFolder.add( cloudParameters, 'perlinSize', 0, 256, 1).onFinishChange( generateGalaxy );
+cloudFolder.add( cloudParameters, 'perlinScale', 0, 5, 0.01).onFinishChange( generateGalaxy );
+cloudFolder.addColor(cloudParameters, 'base').onFinishChange( generateGalaxy )
+
+const cloudShaderFolder = gui.addFolder("Cloud-Noise")
+cloudShaderFolder.add(cloudShaderParameters, 'count').min(1).max(100000).step(1).onFinishChange(generateGalaxy)
+cloudShaderFolder.add(cloudShaderParameters, 'size').min(0.01).max(1000).step(0.01).onFinishChange(generateGalaxy)
+cloudShaderFolder.add(cloudShaderParameters, 'radius').min(0.01).max(20).step(0.01).onFinishChange(generateGalaxy)
+cloudShaderFolder.add(cloudShaderParameters, 'branches').min(2).max(10).step(1).onFinishChange(generateGalaxy)
+cloudShaderFolder.add(cloudShaderParameters, 'randomRange').min(0).max(5).step(0.01).onFinishChange(generateGalaxy)
+cloudShaderFolder.add(cloudShaderParameters, 'randomnessPower').min(1).max(10).step(0.1).onFinishChange(generateGalaxy)
+cloudShaderFolder.add(cloudShaderParameters, 'scaleRange').min(0).max(10).step(0.1).onFinishChange(generateGalaxy)
+cloudShaderFolder.addColor(cloudShaderParameters, 'insideColor').onFinishChange(generateGalaxy)
+cloudShaderFolder.addColor(cloudShaderParameters, 'outsideColor').onFinishChange(generateGalaxy)
+
+const textureFolder = gui.addFolder("Cloud-Texture")
+textureFolder.add(textureParameters, 'count').min(1).max(1000).step(1).onFinishChange(generateGalaxy)
+textureFolder.add(textureParameters, 'size').min(100).max(1000).step(1).onFinishChange(generateGalaxy)
+textureFolder.add(textureParameters, 'radius').min(0.01).max(20).step(0.01).onFinishChange(generateGalaxy)
+textureFolder.add(textureParameters, 'branches').min(2).max(10).step(1).onFinishChange(generateGalaxy)
+textureFolder.add(textureParameters, 'randomRange').min(0).max(2).step(0.001).onFinishChange(generateGalaxy)
+textureFolder.add(textureParameters, 'randomnessPower').min(1).max(10).step(0.1).onFinishChange(generateGalaxy)
+textureFolder.add(textureParameters, 'scaleRange').min(0).max(10).step(0.1).onFinishChange(generateGalaxy)
+textureFolder.addColor(textureParameters, 'insideColor').onFinishChange(generateGalaxy)
+textureFolder.addColor(textureParameters, 'outsideColor').onFinishChange(generateGalaxy)
 
 const starFolder = gui.addFolder("Star")
 starFolder.add(starParameters, 'count').min(1).max(100000).step(1).onFinishChange(generateGalaxy)
@@ -506,41 +534,6 @@ starFolder.add(starParameters, 'scaleRange').min(0).max(10).step(0.1).onFinishCh
 starFolder.addColor(starParameters, 'insideColor').onFinishChange(generateGalaxy)
 starFolder.addColor(starParameters, 'outsideColor').onFinishChange(generateGalaxy)
 
-const cloudShaderFolder = gui.addFolder("Cloud")
-cloudShaderFolder.add(cloudShaderParameters, 'count').min(1).max(100000).step(1).onFinishChange(generateGalaxy)
-cloudShaderFolder.add(cloudShaderParameters, 'size').min(0.01).max(1000).step(0.01).onFinishChange(generateGalaxy)
-cloudShaderFolder.add(cloudShaderParameters, 'radius').min(0.01).max(20).step(0.01).onFinishChange(generateGalaxy)
-cloudShaderFolder.add(cloudShaderParameters, 'branches').min(2).max(10).step(1).onFinishChange(generateGalaxy)
-cloudShaderFolder.add(cloudShaderParameters, 'randomRange').min(0).max(5).step(0.01).onFinishChange(generateGalaxy)
-cloudShaderFolder.add(cloudShaderParameters, 'randomnessPower').min(1).max(10).step(0.1).onFinishChange(generateGalaxy)
-cloudShaderFolder.add(cloudShaderParameters, 'scaleRange').min(0).max(10).step(0.1).onFinishChange(generateGalaxy)
-cloudShaderFolder.addColor(cloudShaderParameters, 'insideColor').onFinishChange(generateGalaxy)
-cloudShaderFolder.addColor(cloudShaderParameters, 'outsideColor').onFinishChange(generateGalaxy)
-
-const textureFolder = gui.addFolder("textureFolder")
-textureFolder.add(textureParameters, 'count').min(1).max(1000).step(1).onFinishChange(generateGalaxy)
-textureFolder.add(textureParameters, 'size').min(100).max(1000).step(1).onFinishChange(generateGalaxy)
-textureFolder.add(textureParameters, 'radius').min(0.01).max(20).step(0.01).onFinishChange(generateGalaxy)
-textureFolder.add(textureParameters, 'branches').min(2).max(10).step(1).onFinishChange(generateGalaxy)
-textureFolder.add(textureParameters, 'randomRange').min(0).max(2).step(0.001).onFinishChange(generateGalaxy)
-textureFolder.add(textureParameters, 'randomnessPower').min(1).max(10).step(0.1).onFinishChange(generateGalaxy)
-textureFolder.add(textureParameters, 'scaleRange').min(0).max(10).step(0.1).onFinishChange(generateGalaxy)
-textureFolder.addColor(textureParameters, 'insideColor').onFinishChange(generateGalaxy)
-textureFolder.addColor(textureParameters, 'outsideColor').onFinishChange(generateGalaxy)
-
-
-const cloudFolder = gui.addFolder("cloudFolder")
-cloudFolder.add( cloudParameters, 'threshold', 0, 1, 0.01 ).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'opacity', 0, 1, 0.01 ).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'range', 0, 1, 0.01 ).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'steps', 0, 200, 1 ).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'size', 0, 10, 0.01).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'randomness', 0, 1, 0.01).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'perlinWidth', 0, 256, 1).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'perlinHeight', 0, 256, 1).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'perlinDepth', 0, 256, 1).onFinishChange( generateGalaxy );
-cloudFolder.add( cloudParameters, 'perlinScale', 0, 5, 0.01).onFinishChange( generateGalaxy );
-cloudFolder.addColor(cloudParameters, 'base').onFinishChange( generateGalaxy )
 /**
  * Animate
  */
@@ -560,10 +553,10 @@ const tick = () =>
     if (parameters.enableStar) {
         starMaterial.uniforms.uTime.value = elapsedTime
     }
-    if (parameters.enableCloudShader) {
+    if (parameters.enableCloudNoise) {
         cloudShaderMaterial.uniforms.uTime.value = elapsedTime
     }
-    if (parameters.enableTexture) {
+    if (parameters.enableCloudTexture) {
         textureMaterial.uniforms.uTime.value = elapsedTime
     }
     if (parameters.enableCloud) {

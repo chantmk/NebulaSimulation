@@ -73,7 +73,7 @@ void main() {
     float x = gl_PointCoord.x + vOrigin.x;
     float y = gl_PointCoord.y + vOrigin.y;
     vec3 cloudEffect = clouds(x, y);
-    color = cloudEffect + vec3(0.5, 0.5, 0.5) + vColor*0.5;
+    color = cloudEffect + vColor*0.5;
     float strength = distance(gl_PointCoord, vec2(0.5));
     strength = 1.0 - strength;
     strength = pow(strength, 5.0);

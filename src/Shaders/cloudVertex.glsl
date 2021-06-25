@@ -7,7 +7,6 @@ varying vec3 vDirection;
 varying vec3 vPosition;
 
 void main() {
-    // vOrigin = vec3(inverse(modelMatrix) * vec4(uCameraPosition, 1.0)).xyz;
     vPosition = position;
     vOrigin = uCameraPosition;
     vDirection = position - vOrigin;
